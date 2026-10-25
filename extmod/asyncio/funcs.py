@@ -45,7 +45,17 @@ async def wait_for(aw, timeout, sleep=core.sleep):
             # aw raised an exception, propagate it out to the caller.
             raise status
 
-    # The sleep finished before aw, so cancel aw and raise TimeoutError.
+    # The sleep finished before aw, so check whether aw completed during the
+    # same time as the timeout. If it did, return its result, rather tham lose
+    # it by raising TimeoutError.
+    if aw.done():
+        er = aw.data
+        runner_task.cancel()
+        await runner_task
+        if isinstance(er, StopIteration):
+            return er.value
+        raise er
+
     runner_task.cancel()
     await runner_task
     raise core.TimeoutError
