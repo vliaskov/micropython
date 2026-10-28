@@ -19,6 +19,7 @@ async def _run(waiter, aw):
             # If the wait_for task subsequently gets cancelled externally then this
             # instance will be reset to a CancelledError instance without arguments.
             waiter.data = core.CancelledError(status, result)
+    return status, result
 
 
 async def wait_for(aw, timeout, sleep=core.sleep):
@@ -43,6 +44,13 @@ async def wait_for(aw, timeout, sleep=core.sleep):
             return er.args[1]
         else:
             # aw raised an exception, propagate it out to the caller.
+            raise status
+
+    if aw.done():
+        status, result = await runner_task
+        if status is True:
+            return result
+        elif not isinstance(status, core.CancelledError):
             raise status
 
     # The sleep finished before aw, so cancel aw and raise TimeoutError.
